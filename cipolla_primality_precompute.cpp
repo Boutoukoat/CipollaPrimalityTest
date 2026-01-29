@@ -55,7 +55,7 @@ struct mod_precompute_t *mpz_mod_precompute(mpz_t n, bool verbose)
 
     if (!p->special_case)
     {
-        // check a proth number  b * 2^n2 + 1
+        // check a Proth number  b * 2^n2 + 1
         p->n2 = (p->n + 1) / 2;
         mpz_mod_2exp(tmp, n, p->n2);
         if (p->n2 >= 64 && mpz_cmp_ui(tmp, 1) == 0)
@@ -150,6 +150,7 @@ void mpz_mod_fast_reduce(mpz_t r, mpz_t tmp, struct mod_precompute_t *p)
                 }
             }
 
+            // reduce the number to approx n bits (Montgomery reduction)
             mpz_div_2exp(x_hi, r, p->n2);
             mpz_mod_2exp(x_lo, r, p->n2);
             mpz_mul(tmp, x_lo, p->b);
@@ -167,7 +168,8 @@ void mpz_mod_fast_reduce(mpz_t r, mpz_t tmp, struct mod_precompute_t *p)
                 mpz_sub(r, r, p->m);
             }
         }
-        // special reduction for modulus = 2^n +/- e
+
+        // special reduction for modulus = 2^n - e
         else if (p->power2me)
         {
             // while (hi != 0) lo += hi * e
@@ -180,6 +182,8 @@ void mpz_mod_fast_reduce(mpz_t r, mpz_t tmp, struct mod_precompute_t *p)
                 mpz_div_2exp(x_hi, r, p->n);
             }
         }
+
+        // special reduction for modulus = 2^n + e
         else if (p->power2pe)
         {
             // while (hi != 0) lo -= hi * e
@@ -231,7 +235,7 @@ void mpz_mod_fast_reduce(mpz_t r, mpz_t tmp, struct mod_precompute_t *p)
             mpz_add(r, tmp, x_lo);
         }
 
-        // reduce the number to approx n bits
+        // reduce the number to approx n bits (Barrett reduction)
         mpz_div_2exp(x_hi, r, p->n);
         mpz_mul(tmp, x_hi, p->b);
         mpz_div_2exp(x_hi, tmp, p->n2);

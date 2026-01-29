@@ -735,16 +735,20 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
     if (j != 0)
     {
         // input modulus is a perfect square
+        if (verbose)
+        {
+            printf("Input number is a perfect square\n");
+        }
         goto done;
     }
 
     // search the smallest non-trivial quadratic residue
     do
     {
-        mpz_add_ui(s, s, 1);                // s += 1;
-        mpz_mul(d, s, s);                   // d = s * s
-        mpz_mod(d, d, p->m);                // d %= n, d is a quadratic residue
-    } while (mpz_is_perfect_square(d));     // d is non-trivial
+        mpz_add_ui(s, s, 1);            // s += 1;
+        mpz_mul(d, s, s);               // d = s * s
+        mpz_mod(d, d, p->m);            // d %= n, d is a quadratic residue
+    } while (mpz_is_perfect_square(d)); // d is non-trivial
 
     // search a quadratic non-residue of the form s^2-d
     while (1)
@@ -756,6 +760,10 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
         k = mpz_jacobi(a, p->m);
         if (k == 0)
         {
+            if (verbose)
+            {
+                printf("Input number has a factor\n");
+            }
             goto done; // composite
         }
         if (k == -1)
@@ -777,9 +785,9 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
     mpz_div_2exp(e, e, 1); // e = (n + 1) / 2
     mpz_set_ui(si, 1);
     mpz_set(sr, s);
+    bit = mpz_sizeinbase(e, 2) - 1;
     mpz_mod_to_montg(sr, p);
     mpz_mod_to_montg(si, p);
-    bit = mpz_sizeinbase(e, 2) - 1;
     while (bit--)
     {
         // t = sr * sr + a * si * si;
@@ -795,6 +803,7 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
         // sr = t % m
         mpz_set(sr, t);
         mpz_mod_fast_reduce(sr, t, p);
+
         if (mpz_tstbit(e, bit))
         {
             // t = s * sr + a * si;
@@ -808,8 +817,8 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
             // sr = t % m
             if (p->montg)
             {
-		    // should not use the montgomery reduction here, because this
-		    // is not after a multiplication of numbers in montgomery form.
+                // should not use the montgomery reduction here, because this
+                // is not after a multiplication of numbers in montgomery form.
                 mpz_mod(si, u, p->m);
                 mpz_mod(sr, t, p->m);
             }
@@ -822,8 +831,9 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
             }
         }
     }
+    // final reductions, make sure sr and si are < modulus
     mpz_mod_from_montg(sr, t, p);
-    mpz_mod_from_montg(si, t, p);
+    mpz_mod_from_montg(si, u, p);
     mpz_mod_slow_reduce(sr, p->m);
     mpz_mod_slow_reduce(si, p->m);
 
@@ -832,10 +842,29 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
     b = mpz_sgn(si) == 0;
     if (b)
     {
-        // check sr is the square root of d
+        // compute sr^2
         mpz_mul(t, sr, sr);
-        mpz_mod(t, t, p->m);
-        b = mpz_cmp(t, d) == 0;
+        mpz_mod(sr, t, p->m);
+        // check sr^2 is the square root of d
+        b = mpz_cmp(sr, d) == 0;
+        if (verbose)
+        {
+            if (b)
+            {
+                printf("Modular square root found\n");
+            }
+            else
+            {
+                printf("Modular square root NOT found\n");
+            }
+        }
+    }
+    else
+    {
+        if (verbose)
+        {
+            printf("Field element is not an integer\n");
+        }
     }
     mpz_clears(e, si, sr, u, 0);
 
