@@ -606,6 +606,57 @@ static bool uint64_is_perfect_square(uint64_t a)
     return r * r == a;
 }
 
+static bool mpz_is_perfect_square(mpz_t n)
+{
+    mpz_t ignore;
+    mpz_init(ignore);
+    uint64_t a = mpz_mod_ui(ignore, n, 64ull * 63ull * 55ull * 61ull * 59ull * 53ull * 47ull * 43ull * 41ull * 37ull);
+    uint64_t b = mpz_mod_ui(ignore, n, 31ull * 29ull * 23ull * 19ull * 17ull * 13ull);
+    mpz_clear(ignore);
+
+    if (0xffedfdfefdecull & (1ull << (a % 48)))
+        return false;
+    if (0xfdfdfdedfdfcfdecull & (1ull << (a % 64)))
+        return false;
+    if (0x7bfdb7cfedbafd6cull & (1ull << (a % 63)))
+        return false;
+    if (0x7dcfeb79ee35ccull & (1ull << (a % 55)))
+        return false;
+    if (0x8ec196bf5a60dc4ull & (1ull << (a % 61)))
+        return false;
+    if (0x5d49de7c1846d44ull & (1ull << (a % 59)))
+        return false;
+    if (0xd228fccfc512cull & (1ull << (a % 53)))
+        return false;
+    if (0x7bcae4d8ac20ull & (1ull << (a % 47)))
+        return false;
+    if (0x4a77c5c11acull & (1ull << (a % 43)))
+        return false;
+    if (0x4c7d4af8c8ull & (1ull << (a % 41)))
+        return false;
+    if (0x9a1dee164ull & (1ull << (a % 37)))
+        return false;
+    if (0x6de2b848ull & (1ull << (b % 31)))
+        return false;
+    if (0xc2edd0cull & (1ull << (b % 29)))
+        return false;
+    if (0x7acca0ull & (1ull << (b % 23)))
+        return false;
+    if (0x4f50cull & (1ull << (b % 19)))
+        return false;
+    if (0x5ce8ull & (1ull << (b % 17)))
+        return false;
+    if (0x9e4ull & (1ull << (b % 13)))
+        return false;
+
+    // compute the rounded-down integer square root, check if the solution is exact.
+    mpz_t u;
+    mpz_init(u);
+    uint64_t e = mpz_root(u, n, 2); // e = squareroot(n), e non zero if computation is exact.
+    mpz_clear(u);
+    return e ? true : false;
+}
+
 static bool uint64_cipolla(uint64_t n, bool verbose = false)
 {
     uint64_t a, d, s = uint64_isqrt(n);
@@ -692,8 +743,8 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
     {
         mpz_add_ui(s, s, 1);                // s += 1;
         mpz_mul(d, s, s);                   // d = s * s
-        mpz_mod(d, d, p->m);                // d %= n  is a quadratic residue
-    } while (mpz_perfect_square_p(d) != 0); // d is non-trivial
+        mpz_mod(d, d, p->m);                // d %= n, d is a quadratic residue
+    } while (mpz_is_perfect_square(d));     // d is non-trivial
 
     // search a quadratic non-residue of the form s^2-d
     while (1)
