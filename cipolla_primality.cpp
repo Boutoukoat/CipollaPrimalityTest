@@ -690,9 +690,9 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
     // search the smallest non-trivial quadratic residue
     do
     {
-        mpz_add_ui(s, s, 1);            // s += 1;
-        mpz_mul(d, s, s);               // d = s * s
-        mpz_mod(d, d, p->m);            // d %= n  is a quadratic residue
+        mpz_add_ui(s, s, 1);                // s += 1;
+        mpz_mul(d, s, s);                   // d = s * s
+        mpz_mod(d, d, p->m);                // d %= n  is a quadratic residue
     } while (mpz_perfect_square_p(d) != 0); // d is non-trivial
 
     // search a quadratic non-residue of the form s^2-d
@@ -720,13 +720,14 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
 
     // Cipolla modular square root finding
     //
-    // NON-OPTIMIZED version considering that a and s are approx 1/2 size modulus
     mpz_t e, si, sr, u;
     mpz_inits(e, si, sr, u, 0);
     mpz_add_ui(e, p->m, 1);
     mpz_div_2exp(e, e, 1); // e = (n + 1) / 2
     mpz_set_ui(si, 1);
     mpz_set(sr, s);
+    mpz_mod_to_montg(sr, p);
+    mpz_mod_to_montg(si, p);
     bit = mpz_sizeinbase(e, 2) - 1;
     while (bit--)
     {
@@ -737,11 +738,12 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
         mpz_add(t, t, u);
         // u = 2 * si * sr
         mpz_mul(u, si, sr);
-        mpz_mul_2exp(u, u, 1);
+        mpz_mul_2exp(si, u, 1);
         // si = u % m
-        mpz_mod(si, u, p->m);
+        mpz_mod_fast_reduce(si, u, p);
         // sr = t % m
-        mpz_mod(sr, t, p->m);
+        mpz_set(sr, t);
+        mpz_mod_fast_reduce(sr, t, p);
         if (mpz_tstbit(e, bit))
         {
             // t = s * sr + a * si;
@@ -752,11 +754,27 @@ static bool mpz_cipolla(mod_precompute_t *p, bool verbose = false)
             mpz_mul(u, s, si);
             mpz_add(u, u, sr);
             // si = u % m
-            mpz_mod(si, u, p->m);
             // sr = t % m
-            mpz_mod(sr, t, p->m);
+            if (p->montg)
+            {
+		    // should not use the montgomery reduction here, because this
+		    // is not after a multiplication of numbers in montgomery form.
+                mpz_mod(si, u, p->m);
+                mpz_mod(sr, t, p->m);
+            }
+            else
+            {
+                mpz_set(si, u);
+                mpz_mod_fast_reduce(si, u, p);
+                mpz_set(sr, t);
+                mpz_mod_fast_reduce(sr, t, p);
+            }
         }
     }
+    mpz_mod_from_montg(sr, t, p);
+    mpz_mod_from_montg(si, t, p);
+    mpz_mod_slow_reduce(sr, p->m);
+    mpz_mod_slow_reduce(si, p->m);
 
     // if the outcome (sr, si) is not the square root of d, then input number is composite for sure
     // check si == 0
