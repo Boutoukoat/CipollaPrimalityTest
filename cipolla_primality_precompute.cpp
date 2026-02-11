@@ -21,7 +21,8 @@ struct mod_precompute_t *mpz_mod_precompute(mpz_t n, bool verbose)
     p->montg = false;
     p->power2pe = false;
     p->power2me = false;
-    mpz_inits(tmp, p->a, p->b, p->m, 0);
+    p->gmn = false;
+    mpz_inits(tmp, p->a, p->b, p->m, p->i, 0);
     p->n = mpz_sizeinbase(n, 2);
     p->n2 = 0;
     p->n32 = 0;
@@ -79,6 +80,41 @@ struct mod_precompute_t *mpz_mod_precompute(mpz_t n, bool verbose)
 
     if (!p->special_case)
     {
+        // check a generalized mersenne number a * 2^n2 - b
+        // start from the middle of the modulus
+        uint64_t s = p->n / 2;
+        while (mpz_tstbit(n, s) == 1)
+        {
+            s += 1;
+        }
+        // make sure reduction is worth it  (TODO)
+        if (4 * --s > p->n * 3)
+        {
+            mpz_set_ui(tmp, 1);
+            mpz_mul_2exp(tmp, tmp, s);
+            mpz_mod_2exp(p->b, n, s);
+            mpz_sub(p->b, tmp, p->b);
+            mpz_div_2exp(p->a, n, s);
+            mpz_add_ui(p->a, p->a, 1);
+            while ((mpz_get_ui(p->a) & 1) == 0)
+            {
+                mpz_div_2exp(p->a, p->a, 1);
+                s += 1;
+            }
+            mpz_gcd(tmp, p->a, n);
+            if (mpz_cmp_ui(tmp, 1) == 0)
+            {
+                mpz_mul(tmp, p->a, p->a);
+                mpz_invert(p->i, tmp, n);
+                p->n2 = s;
+                p->gmn = true;
+                p->special_case = true;
+            }
+        }
+    }
+
+    if (!p->special_case)
+    {
         // precompute a variant of Barrett reduction
         // b = 2^(3n/2) / n
         // a = 2^(3n/2) % n
@@ -104,6 +140,10 @@ struct mod_precompute_t *mpz_mod_precompute(mpz_t n, bool verbose)
         {
             printf("Modular reduction optimized for numbers e*2^s + 1\n");
         }
+        if (p->gmn)
+        {
+            printf("Modular reduction optimized for numbers a*2^s - b\n");
+        }
         if (!p->special_case)
         {
             printf("Modular reduction not optimized\n");
@@ -116,7 +156,7 @@ void mpz_mod_uncompute(mod_precompute_t *p)
 {
     if (p)
     {
-        mpz_clears(p->a, p->b, p->m, 0);
+        mpz_clears(p->a, p->b, p->m, p->i, 0);
         memset(p, 0, sizeof(struct mod_precompute_t));
         cipolla_free_function(p, sizeof(struct mod_precompute_t));
     }
@@ -172,7 +212,7 @@ void mpz_mod_fast_reduce(mpz_t r, mpz_t tmp, struct mod_precompute_t *p)
         // special reduction for modulus = 2^n - e
         else if (p->power2me)
         {
-            // while (hi != 0) lo += hi * e
+            // while (hi != 0) r = lo + hi * e
             mpz_div_2exp(x_hi, r, p->n);
             while (mpz_sgn(x_hi) != 0)
             {
@@ -186,7 +226,7 @@ void mpz_mod_fast_reduce(mpz_t r, mpz_t tmp, struct mod_precompute_t *p)
         // special reduction for modulus = 2^n + e
         else if (p->power2pe)
         {
-            // while (hi != 0) lo -= hi * e
+            // while (hi != 0) r = lo - hi * e
             mpz_div_2exp(x_hi, r, p->n - 1);
             while (mpz_cmp_ui(x_hi, 1) > 0)
             {
@@ -209,6 +249,36 @@ void mpz_mod_fast_reduce(mpz_t r, mpz_t tmp, struct mod_precompute_t *p)
                 }
                 mpz_div_2exp(x_hi, r, p->n - 1);
             }
+        }
+        else if (p->gmn1)
+        {
+            // special reduction for modulus = a*2^n2 - a for a small
+            uint64_t s = mpz_sizeinbase(r, 2);
+            while (s > p->n)
+            {
+                printf("%ld > %ld\n", s, p->n);
+                mpz_div_2exp(x_hi, r, p->n2);
+                mpz_mod_2exp(x_lo, r, p->n2);
+                mpz_add(tmp, x_lo, x_hi);
+                printf("%ld x %ld\n", mpz_sizeinbase(tmp, 2), mpz_sizeinbase(p->a, 2));
+                mpz_mul(r, tmp, p->a);
+                s = mpz_sizeinbase(r, 2);
+            }
+            printf("%ld <= %ld\n", s, p->n);
+        }
+        else if (p->gmn)
+        {
+            // special reduction for modulus = a*2^n2 - b for a, b small
+            mpz_div_2exp(x_hi, r, p->n2);
+            mpz_mod_2exp(x_lo, r, p->n2);
+            mpz_mul(x_hi, x_hi, p->b);
+            mpz_mul(x_lo, x_lo, p->a);
+            mpz_add(r, x_lo, x_hi);
+            mpz_div_2exp(x_hi, r, p->n2);
+            mpz_mod_2exp(x_lo, r, p->n2);
+            mpz_mul(x_hi, x_hi, p->b);
+            mpz_mul(x_lo, x_lo, p->a);
+            mpz_add(r, x_lo, x_hi);
         }
     }
     else
@@ -283,8 +353,16 @@ void mpz_mod_to_montg(mpz_t v, struct mod_precompute_t *p)
 {
     if (p->montg)
     {
-        mpz_mul_2exp(v, v, 2 * p->n2);
-        mpz_mod(v, v, p->m);
+        if (p->proth)
+        {
+            mpz_mul_2exp(v, v, 2 * p->n2);
+            mpz_mod(v, v, p->m);
+        }
+        if (p->gmn)
+        {
+            mpz_mul(v, v, p->i);
+            mpz_mod(v, v, p->m);
+        }
     }
 }
 
