@@ -25,7 +25,6 @@ struct mod_precompute_t
     bool power2me;     // modulus is 2^n - e
     bool power2pe;     // modulus is 2^n + e
     bool gmn;          // modulus is a * 2^n2 - b
-    bool gmn1;         // modulus is a * 2^n2 - a
     uint64_t e;        // small number part of the modulus
 };
 

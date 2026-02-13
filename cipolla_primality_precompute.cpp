@@ -250,22 +250,6 @@ void mpz_mod_fast_reduce(mpz_t r, mpz_t tmp, struct mod_precompute_t *p)
                 mpz_div_2exp(x_hi, r, p->n - 1);
             }
         }
-        else if (p->gmn1)
-        {
-            // special reduction for modulus = a*2^n2 - a for a small
-            uint64_t s = mpz_sizeinbase(r, 2);
-            while (s > p->n)
-            {
-                printf("%ld > %ld\n", s, p->n);
-                mpz_div_2exp(x_hi, r, p->n2);
-                mpz_mod_2exp(x_lo, r, p->n2);
-                mpz_add(tmp, x_lo, x_hi);
-                printf("%ld x %ld\n", mpz_sizeinbase(tmp, 2), mpz_sizeinbase(p->a, 2));
-                mpz_mul(r, tmp, p->a);
-                s = mpz_sizeinbase(r, 2);
-            }
-            printf("%ld <= %ld\n", s, p->n);
-        }
         else if (p->gmn)
         {
             // special reduction for modulus = a*2^n2 - b for a, b small
