@@ -1,6 +1,6 @@
 
 
-GGG = g++ -O3 -flto -Wall -march=native -fomit-frame-pointer -fexpensive-optimizations
+GGG = g++ -O3 -Wall -march=native -fomit-frame-pointer -fexpensive-optimizations
 # GGG = clang++ -O3 -Wall -march=native -fomit-frame-pointer
 
 OBJ = cipolla_primality_main.o \
@@ -12,19 +12,16 @@ OBJ = cipolla_primality_main.o \
 cipolla: $(OBJ)
 	$(GGG) -static -o cipolla $(OBJ) -lgmp -lpthread -lm
 
-cipolla_primality_main.o: cipolla_primality_main.cpp cipolla_primality.h cipolla_primality_alloc.h expression_parser.h
+cipolla_primality_main.o: cipolla_primality_main.cpp cipolla_primality.h cipolla_primality_alloc.h bison.gmp_expr.tab.h
 	$(GGG) -c -o cipolla_primality_main.o cipolla_primality_main.cpp
 
 cipolla_primality_alloc.o: cipolla_primality_alloc.cpp cipolla_primality_alloc.h
 	$(GGG) -c -o cipolla_primality_alloc.o cipolla_primality_alloc.cpp
 
-cipolla_primality_precompute.o: cipolla_primality_precompute.cpp cipolla_primality_precompute.h
-	$(GGG) -c -o cipolla_primality_precompute.o cipolla_primality_precompute.cpp
-
 cipolla_primality.o: cipolla_primality.cpp cipolla_primality.h
 	$(GGG) -c -o cipolla_primality.o cipolla_primality.cpp
 
-expression_parser.a : bison.gmp_expr.o lex.gmp_expr.o expression_parser.h
+expression_parser.a : bison.gmp_expr.o lex.gmp_expr.o bison.gmp_expr.tab.h
 	ar vr expression_parser.a bison.gmp_expr.o lex.gmp_expr.o
 
 bison.gmp_expr.o : bison.gmp_expr.tab.c bison.gmp_expr.h
@@ -43,6 +40,6 @@ check: cipolla
 	./cipolla -st
 
 clean:
-	rm -f ./cipolla $(OBJ)
+	rm -f ./cipolla $(OBJ) bison.gmp_expr.o bison.gmp_expr.tab.c bison.gmp_expr.tab.h lex.gmp_expr.o lex.gmp_expr.c
 
 

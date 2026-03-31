@@ -10,24 +10,26 @@ So far, no counterexample (pseudoprime) has been found.
 
 # The maths
 
-Cipolla algorithm, when p is prime, is able to retrieve a modular square root
+Cipolla algorithm, when p is prime, is able to retrieve the modular square root of a quadratic residue
 
 https://en.wikipedia.org/wiki/Cipolla%27s_algorithm
 
-The converse is : If a modular square root cannot be retrieved, then p is composite for sure
+The converse is : If such a modular square root cannot be retrieved, then p is composite for sure
 
 https://math.stackexchange.com/questions/3551965/can-cipolla-algorithm-be-used-as-a-primality-test
 
-There might be an infinity of pseudoprimes for this test, but none has been found.
+The converse is used as a compositeness test. There might be an infinity of pseudoprimes for this test, but none has been found.
 
 No false positive, no false negative found < 2^48
+
+
+The code takes advantage of some special forms of moduli
 
 # See also
 
 See the following self-similar primality tests https://github.com/Boutoukoat
 
 - SimplePrimalityTest
-- CipollaPrimalityTest
 - QuadraticPrimalityTest
 - CubicPrimalityTest
 
@@ -48,6 +50,14 @@ $ ./cipolla 0x988a04da39838a3757afef4ae6ed84b092aa0ee673067e52140862e5d27af3adfd
 
 $ ./cipolla 2^11213-1
 2^11213-1 might be prime, time=    3147.283 msecs.
+
+$ cat test.txt
+3^2+1
+3^2+2
+$ ./cipolla -v -f test.txt
+3^2+1 ... composite for sure
+3^2+2 ... might be prime
+File test.txt done, 1 primes, 1 composites
 
 ```
 

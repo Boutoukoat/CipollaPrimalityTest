@@ -11,23 +11,38 @@
 
 #include "cipolla_primality.h"
 #include "cipolla_primality_alloc.h"
-#include "expression_parser.h"
+#include "bison.gmp_expr.h"
 
 static void cipolla_primality_file(char *name, bool verbose)
 {
     long prime_count = 0;
     long composite_count = 0;
+    long line = 0;
     FILE *f = fopen(name, "rt");
     if (f)
     {
         const int buff_len = 1000000; // max line length
-        char buff[buff_len];
+        char *buff = (char *)malloc(buff_len);
+	if (!buff)
+	{
+ 		printf("Unable to allocate %d bytes\n", buff_len);
+ 		exit(1);
+	}
         mpz_t v;
         mpz_init(v);
 
         // get a line
+        buff[buff_len - 2] = 0;
         while (fgets(buff, buff_len, f))
         {
+ 		line++;
+		// check buffer overflow
+ 		if (buff[buff_len - 2] != 0)
+ 		{
+ 			printf("Input line %ld too long\n", line);
+ 			exit(1);
+ 		}
+
             // trim trailing spaces
             int len = strlen(buff);
             while (len > 0 && isspace(buff[len - 1]))
@@ -59,6 +74,8 @@ static void cipolla_primality_file(char *name, bool verbose)
             }
         }
         mpz_clear(v);
+	free(buff);
+	fclose(f);
     }
     printf("File %s done, %ld primes, %ld composites\n", name, prime_count, composite_count);
 }

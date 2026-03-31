@@ -1,7 +1,11 @@
 %{
 #include<stdio.h>
+#include<string.h>
 #include "gmp.h"
 #include "bison.gmp_expr.h"
+
+void gmp_expr_lex_init(char * str);
+void gmp_expr_lex_terminate(void);
 
 int yylex();
 int yyerror(const char *s);
@@ -58,22 +62,21 @@ sterm: term
  | SUB term { mpz_neg(stack_ptr, stack_ptr); }
  ;
 term: NUMBER { if (stack_ptr - stack[0] >= STACK_SIZE - 1) yyerror("expression overflow"); 
-               stack_ptr++; mpz_set_str(stack_ptr, $1, 0); }
+               stack_ptr++; int v = mpz_set_str(stack_ptr, $1, 0); if (v) yyerror("invalid number representation"); }
  | OPEN_B sum CLOSE_B
  ;
 
 %%
 
-extern char* gmp_expr_lex_data;
-
 void mpz_expression_parse(mpz_t n, char *str)
 {
- for (unsigned i = 0; i < STACK_SIZE; i++) mpz_init (stack[i]);
+ for (unsigned i = 0; i < STACK_SIZE; i++) { mpz_init(stack[i]); }
  stack_ptr = stack[0];
- gmp_expr_lex_data = str;
+gmp_expr_lex_init(str);
  yyparse();
+gmp_expr_lex_terminate();
  mpz_set(n , stack[0]);
- for (unsigned i = 0; i < STACK_SIZE; i++) mpz_clear (stack[i]);
+ for (unsigned i = 0; i < STACK_SIZE; i++) { mpz_clear (stack[i]); }
 }
 
 int yyerror(const char *s)

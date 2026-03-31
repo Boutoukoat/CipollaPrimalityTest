@@ -1,14 +1,27 @@
 %option prefix="gmp_expr"
 %option noyywrap
+
 %{
 
     #include <stdlib.h>
     #include "bison.gmp_expr.tab.h" 
 
-char *gmp_expr_lex_data = 0;
+int gmp_exprlex_destroy(void);
+
+static char *gmp_expr_lex_data = 0;
+void gmp_expr_lex_init(char * str)
+{
+    gmp_expr_lex_data = str;
+}
+
+void gmp_expr_lex_terminate(void)
+{
+gmp_exprlex_destroy();
+}
 
 int myinput (char *buf, int buflen) {
-    strncpy(buf, gmp_expr_lex_data, buflen);
+    strncpy(buf, gmp_expr_lex_data, buflen - 1);
+    buf[buflen-1] = 0;
     int i = strlen(buf);
     gmp_expr_lex_data += i;
     return i;
