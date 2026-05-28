@@ -63,7 +63,12 @@ static void cipolla_primality_file(char *name, bool verbose)
                     printf("%s ...", pt);
                     fflush(stdout);
                 }
-                mpz_expression_parse(v, pt);
+                bool valid = mpz_expression_parse(v, pt);
+		if (!valid)
+		{
+			printf("Input line %ld unparsable\n", line);
+			exit(1);
+		}
                 bool is_prime = mpz_cipolla_primality(v);
                 if (verbose)
                 {
@@ -132,7 +137,13 @@ int main(int argc, char **argv)
 
             // Read an expression from the command line
             // Supported operators are +/-*^() with usual precedence.
-            mpz_expression_parse(n, argv[i]);
+	    bool valid = mpz_expression_parse(n, argv[i]);
+	    if (!valid)
+	    {
+			printf("Input unparsable\n");
+			exit(1);
+	    }
+
             // gmp_printf("Test n=%Zd.\n",n);
 
             clock_gettime(CLOCK_REALTIME, &ts1);

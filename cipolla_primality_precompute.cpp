@@ -108,6 +108,7 @@ struct mod_precompute_t *mpz_mod_precompute(mpz_t n, bool verbose)
                 mpz_mul(tmp, p->a, p->a);
                 mpz_invert(p->inv, tmp, n);
                 p->n2 = s;
+                p->montg = true;
                 p->gmn = true;
                 p->special_case = true;
             }
@@ -340,7 +341,7 @@ void mpz_mod_to_montg(mpz_t v, struct mod_precompute_t *p)
             mpz_mul_2exp(v, v, 2 * p->n2);
             mpz_mod(v, v, p->m);
         }
-        if (p->gmn)
+	else if (p->gmn)
         {
             mpz_mul(v, v, p->inv);
             mpz_mod(v, v, p->m);
