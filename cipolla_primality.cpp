@@ -975,7 +975,7 @@ bool mpz_cipolla_primality(mpz_t n, bool verbose)
         break;
     }
 
-    mod_precompute_t *pcpt = mpz_mod_precompute(n, verbose);
+    mod_precompute_t *pcpt = mpz_mod_precompute(n, 1, verbose);
     bool r = mpz_cipolla(pcpt, verbose);
     mpz_mod_uncompute(pcpt);
 
